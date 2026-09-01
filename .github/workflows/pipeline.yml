@@ -8,6 +8,10 @@ on:
 jobs:
   simple_deployment_pipeline:
     runs-on: ubuntu-latest
+    # Set the working directory for all steps in this job:
+    defaults:
+      run:
+        working-directory: ./pokedex-app # <--- Change this to your folder name
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
