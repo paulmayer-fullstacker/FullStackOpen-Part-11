@@ -21,17 +21,12 @@ jobs:
         run: npm install
       - name: Check style
         run: npm run eslint
-
-  hello_world_job:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Say hello
-        run: |
-          echo "Hello World!"
-
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
       - name: Run date
         run: |
           date
-
       - name: Run ls -l
         run: ls -l
