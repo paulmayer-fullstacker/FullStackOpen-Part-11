@@ -2,7 +2,8 @@ module.exports = {
   "env": {
     "browser": true,
     "es6": true,
-    "jest/globals": true
+    "jest/globals": true,
+    "node": true // Added to allow Node.js global variable (module, require, process) to pass linting.
   },
   "extends": [
     "eslint:recommended",

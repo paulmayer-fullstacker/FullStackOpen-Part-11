@@ -23,3 +23,9 @@ npm run build
 
 Start/run the production build locally:
 npm run start-prod
+
+
+Exercise-9. PlayWrite E2E Tests:
+Install PlayWrite:
+npm install --save-dev @playwright/test
+npx playwright install --with-deps

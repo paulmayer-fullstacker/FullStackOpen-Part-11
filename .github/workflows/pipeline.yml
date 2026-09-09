@@ -1,6 +1,6 @@
 # FullStackOpen-Part-11/.github/workflows/pipeline.yml:
 name: Deployment pipeline
-
+# Trigger this workflow on every push to the main branch.
 on:
   push:
     branches:
@@ -13,20 +13,40 @@ jobs:
       run:
         working-directory: ./pokedex-app
     steps:
+      # Step-1: Check out the repository code into the runner environment.
       - uses: actions/checkout@v6
+      # Step-2: Set up Node.js runtime environment (v24).
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
+      # Step-3: Install all project dependencies (dependencies and devDependencies).
       - name: Install dependencies
         run: npm install
+      # Step-4: Run ESLint to verifing code quality and style standards.
       - name: Check style
         run: npm run eslint
+      # Step-5: Run unit/integration tests with Jest.
       - name: Test
         run: npm test
+      # Step-6: Create the production bundle with Webpack.
       - name: Build
         run: npm run build
+      # Step-7: Download Playwright browser binaries (Chromium) and system dependencies required for CI.
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      # Step-8: Execute Playwright E2E tests (automatically starts Webpack server and tests the site).
+      - name: Run Playwright tests
+        run: npm run test:e2e
+      # Step-9: Print current execution date for debugging/logging.
       - name: Run date
         run: |
           date
+      # Step-10: List directory contents to inspect the build state.
       - name: Run ls -l
         run: ls -l
+
+  # Note on Step-7:
+  # In local development, we ran 'npx playwright install' once in our terminal.
+  # GitHub Actions runners operate as clean, fresh virtual machines for every run.
+  # So, running 'npx playwright install --with-deps' ensures that the Chromium browser binary
+  # and all necessary Linux OS system dependencies (like headless display libraries) are installed before 'npm run test:e2e' executes.
