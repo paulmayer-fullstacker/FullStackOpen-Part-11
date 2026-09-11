@@ -44,6 +44,10 @@ jobs:
       # Step-10: List directory contents to inspect the build state.
       - name: Run ls -l
         run: ls -l
+      # Step-11: Trigger deployment on Render using the deploy hook
+      - name: Trigger deployment
+        # Send HTTP GET request to Render's deploy hook URL using curl. Thus informing Render that the pipeline passed and a new deployment can start.
+        run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
 
   # Note on Step-7:
   # In local development, we ran 'npx playwright install' once in our terminal.
