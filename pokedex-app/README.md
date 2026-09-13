@@ -26,8 +26,18 @@ Code added to app.js:
 // Health Check Endpoint: Render sends a GET request to '/health' after building the app.
 // If the endpoint responds with a success (HTTP 200) status, Render knows the server is healthy and will direct traffic to this new deployment.
 app.get('/health', (req, res) => {
-  // eslint-disable-next-line no-constant-condition
+  // // eslint-disable-next-line no-constant-condition
   // if (true) throw 'error...  ' // Test Heath Check by simulating failure. Remove during normal use.
+  res.send('ok')
+})
+```
+
+Modify code to force health check failure:
+
+```js
+app.get('/health', (req, res) => {
+  // eslint-disable-next-line no-constant-condition
+  if (true) throw 'error...  '
   res.send('ok')
 })
 ```
