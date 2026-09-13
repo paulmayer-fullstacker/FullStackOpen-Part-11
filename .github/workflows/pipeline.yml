@@ -1,10 +1,15 @@
 # FullStackOpen-Part-11/.github/workflows/pipeline.yml:
 name: Deployment pipeline
-# Trigger this workflow on every push to the main branch.
+# When will this workflow be triggered?
 on:
+  # Trigger workflow on pushes directly to main branch.
   push:
     branches:
       - main
+  # Trigger workflow on pull requests targeting the main branch
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize] # Runs when a PR is opened or updated with new commits.
 jobs:
   simple_deployment_pipeline:
     runs-on: ubuntu-latest
