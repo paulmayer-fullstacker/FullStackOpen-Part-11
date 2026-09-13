@@ -51,6 +51,9 @@ jobs:
         run: ls -l
       # Step-11: Trigger deployment on Render using the deploy hook
       - name: Trigger deployment
+        # Conditional guard statement ensuring this step ONLY executes when the event is a direct push or merge to main.
+        # On 'pull_request' events, this step is SKIPPED.
+        if: ${{ github.event_name == 'push' }}
         # Send HTTP GET request to Render's deploy hook URL using curl. Thus informing Render that the pipeline passed and a new deployment can start.
         run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
 
