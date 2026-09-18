@@ -56,9 +56,26 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         # Send HTTP GET request to Render's deploy hook URL using curl. Thus informing Render that the pipeline passed and a new deployment can start.
         run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
-
-  # Note on Step-7:
-  # In local development, we ran 'npx playwright install' once in our terminal.
-  # GitHub Actions runners operate as clean, fresh virtual machines for every run.
-  # So, running 'npx playwright install --with-deps' ensures that the Chromium browser binary
-  # and all necessary Linux OS system dependencies (like headless display libraries) are installed before 'npm run test:e2e' executes.
+  # Jobs run independently of eachother (in parallel). However, t_r is dependent on s_d_p, and can't start until s_d_p has completed.
+  tag_release:
+    # Explicitly make this job wait until 's_d_p' finishes successfully. If linting/testing/building/deployment fail, t_r will not run.
+    needs: [simple_deployment_pipeline]
+    runs-on: ubuntu-latest
+    steps:
+      # Step-1: Checkout repository history.
+      - uses: actions/checkout@v6
+        with:
+          # fetch-depth: '0': fetches entire git commit history and all existing tags. Required so tag action can calculate the previous tag version.
+          fetch-depth: '0'
+      # Step-2: Calculate and push the new version tag.
+      - name: Bump version and push tag
+        # Conditional guard statement: Ensures tagging only happens on direct pushes/merges to main.
+        if: ${{ github.event_name == 'push' }}
+        uses: anothrNick/github-tag-action@1.75.0
+        env:
+          # Passes the GitHub authentication token required to create and push tags back to the repo.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Overrides the action's default 'minor' increment to increment the patch instead.
+          DEFAULT_BUMP: patch
+          # DRY_RUN: Test logic on GitHub without creating a tag on the repository. Remove for production.
+          DRY_RUN: true
