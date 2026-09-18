@@ -77,5 +77,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Overrides the action's default 'minor' increment to increment the patch instead.
           DEFAULT_BUMP: patch
-          # DRY_RUN: Test logic on GitHub without creating a tag on the repository. Remove for production.
-          DRY_RUN: true
+          # DRY_RUN: Test logic on GitHub without creating a tag on the repository. Declare false for production.
+          DRY_RUN: false
