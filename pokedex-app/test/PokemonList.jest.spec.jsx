@@ -29,7 +29,7 @@ describe('<PokemonList />', () => {
     expect(screen.getByText('bulbasaur')).toBeVisible()
     expect(screen.getByText('eevee')).toBeVisible()
 
-    // LINE ADDED TO FORCE A FAILURE
-    expect(true).toBe(false)
+    // // LINE ADDED TO FORCE A FAILURE WHEN TESTING STATUS NOTIFICATION ACTION
+    // expect(true).toBe(false)
   })
 })
