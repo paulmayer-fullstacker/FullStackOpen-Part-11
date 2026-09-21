@@ -55,10 +55,10 @@ jobs:
         if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }} # See Note on Step-11
         # Send HTTP GET request to Render's deploy hook URL using curl. Thus informing Render that the pipeline passed and a new deployment can start.
         run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
-      # Step-12: Send a Discord notification if deployment completes successfully
+      # Step-12: Discord Success Notification. Send notification if deployment completes successfully.
       - name: Discord Success Notification
-        uses: rsaatci/github-action-discord@v1.0.1
-        # Triggers ONLY on direct main pushes (deployment) AND when all prior steps succeed.
+        uses: ILikeToWatch/actions-status-discord@v1
+        # Trigger only on direct main pushes (deployment) and when all prior steps succeed.
         if: ${{ success() && github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
@@ -68,9 +68,9 @@ jobs:
             **Commit:** ${{ github.sha }}
             **Message:** ${{ github.event.head_commit.message }}
             **Author:** ${{ github.actor }}
-      # Step-13: Send a verbose Discord notification if ANY step in the job fails
+      # Step-13: Discord Failure Notification. Send verbose notification if any step in the job fails.
       - name: Discord Failure Notification
-        uses: rsaatci/github-action-discord@v1.0.1
+        uses: ILikeToWatch/actions-status-discord@v1
         # failure() forces this step to execute even if an earlier step (linting, tests, build) errored out.
         if: ${{ failure() }}
         with:
@@ -118,3 +118,20 @@ jobs:
 #  join(..., ' '): Flatten that array into a single space-separated string.
 #  contains(..., '#skip'): Checks if #skip exists anywhere in that combined text.
 #  !: Inversion. So, the step executes only when #skip is not found in any of the merged commits.
+
+#  Note on Step-11:
+## #  [View Commit](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+# Markdown hyperlink format: [Link Text](URL)
+# - [View Commit]: The text that appears as a clickable hyperlink in Discord.
+# - https://github.com/: Base GitHub web URL.
+# - ${{ github.repository }}: Evaluates to "owner/repo-name" (e.g., "username/pokedex-app").
+# - /commit/: Path to view individual commit changes.
+# - ${{ github.sha }}: Evaluates to the full 40-character commit hash that triggered the workflow.
+
+## #  [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+# Markdown hyperlink format: [Link Text](URL)
+# - [View Workflow Run]: The text that appears as a clickable hyperlink in Discord.
+# - https://github.com/: Base GitHub web URL.
+# - ${{ github.repository }}: Evaluates to "owner/repo-name" (e.g., "username/pokedex-app").
+# - /actions/runs/: Path to view GitHub Actions execution logs.
+# - ${{ github.run_id }}: Evaluates to the unique numerical ID assigned by GitHub to this specific pipeline execution.
