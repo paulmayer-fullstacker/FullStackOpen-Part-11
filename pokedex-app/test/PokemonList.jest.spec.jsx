@@ -10,13 +10,13 @@ const pokemonList = [
   {
     url: 'https://pokeapi.co/api/v2/pokemon/1/',
     name: 'bulbasaur',
-    id: 1
+    id: 1,
   },
   {
     url: 'https://pokeapi.co/api/v2/pokemon/133/',
     name: 'eevee',
-    id: 133
-  }
+    id: 133,
+  },
 ]
 
 describe('<PokemonList />', () => {
@@ -24,9 +24,12 @@ describe('<PokemonList />', () => {
     render(
       <BrowserRouter>
         <PokemonList pokemonList={pokemonList} />
-      </BrowserRouter>
+      </BrowserRouter>,
     )
     expect(screen.getByText('bulbasaur')).toBeVisible()
     expect(screen.getByText('eevee')).toBeVisible()
+
+    // LINE ADDED TO FORCE A FAILURE
+    expect(true).toBe(false)
   })
 })
