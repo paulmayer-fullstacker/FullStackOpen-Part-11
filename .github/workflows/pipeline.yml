@@ -52,9 +52,43 @@ jobs:
       # Step-11: Trigger deployment on Render using the deploy hook
       - name: Trigger deployment
         # Conditional guard statement: Skip deployment if triggered by PR OR if any commit message in the push event contains '#skip'
-        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}   # See Note on Step-11
+        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }} # See Note on Step-11
         # Send HTTP GET request to Render's deploy hook URL using curl. Thus informing Render that the pipeline passed and a new deployment can start.
         run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
+      # Step-12: Send a Discord notification if deployment completes successfully
+      - name: Discord Success Notification
+        uses: rsaatci/github-action-discord@v1.0.1
+        # Triggers ONLY on direct main pushes (deployment) AND when all prior steps succeed.
+        if: ${{ success() && github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          status: success
+          title: "Deployment Successful! A new version deployed to production"
+          description: |
+            **Commit:** ${{ github.sha }}
+            **Message:** ${{ github.event.head_commit.message }}
+            **Author:** ${{ github.actor }}
+      # Step-13: Send a verbose Discord notification if ANY step in the job fails
+      - name: Discord Failure Notification
+        uses: rsaatci/github-action-discord@v1.0.1
+        # failure() forces this step to execute even if an earlier step (linting, tests, build) errored out.
+        if: ${{ failure() }}
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          status: failure
+          title: "Build Failed! The pipeline encountered an error"
+          # Verbose output to pinpoint the offending commit and runner logs quickly
+          description: |
+            **Repository:** ${{ github.repository }}
+            **Branch:** ${{ github.ref_name }}
+            **Commit:** ${{ github.sha }}
+            **Message:** ${{ github.event.head_commit.message }}
+            **Author:** ${{ github.actor }}
+            **Workflow:** ${{ github.workflow }}
+            **Job:** ${{ github.job }}
+
+            [View Commit](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+            [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
   # Jobs run independently of eachother (in parallel). However, t_r is dependent on s_d_p, and can't start until s_d_p has completed.
   tag_release:
     # Explicitly make this job wait until 's_d_p' finishes successfully. If linting/testing/building/deployment fail, t_r will not run.
@@ -65,7 +99,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           # fetch-depth: '0': fetches entire git commit history and all existing tags. Required so tag action can calculate the previous tag version.
-          fetch-depth: '0'
+          fetch-depth: "0"
       # Step-2: Calculate and push the new version tag.
       - name: Bump version and push tag
         # Conditional guard statement: Ensures tagging only happens on direct pushes/merges to main.
@@ -80,7 +114,7 @@ jobs:
           DRY_RUN: false
 
 #  Note on Step-11:
-  #  github.event.commits.*.message: Extracts an array of all commit message strings in the push event.
-  #  join(..., ' '): Flatten that array into a single space-separated string.
-  #  contains(..., '#skip'): Checks if #skip exists anywhere in that combined text.
-  #  !: Inversion. So, the step executes only when #skip is not found in any of the merged commits.
+#  github.event.commits.*.message: Extracts an array of all commit message strings in the push event.
+#  join(..., ' '): Flatten that array into a single space-separated string.
+#  contains(..., '#skip'): Checks if #skip exists anywhere in that combined text.
+#  !: Inversion. So, the step executes only when #skip is not found in any of the merged commits.
