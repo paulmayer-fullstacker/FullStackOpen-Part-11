@@ -55,40 +55,7 @@ jobs:
         if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }} # See Note on Step-11
         # Send HTTP GET request to Render's deploy hook URL using curl. Thus informing Render that the pipeline passed and a new deployment can start.
         run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
-      # # Step-12: Discord Success Notification. Send notification if deployment completes successfully.
-      # - name: Discord Success Notification
-      #   uses: ILikeToWatch/actions-status-discord@v1
-      #   # Trigger only on direct main pushes (deployment) and when all prior steps succeed.
-      #   if: ${{ success() && github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
-      #   with:
-      #     webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
-      #     status: success
-      #     title: "Deployment Successful! A new version deployed to production"
-      #     description: |
-      #       **Commit:** ${{ github.sha }}
-      #       **Message:** ${{ github.event.head_commit.message }}
-      #       **Author:** ${{ github.actor }}
-      # # Step-13: Discord Failure Notification. Send verbose notification if any step in the job fails.
-      # - name: Discord Failure Notification
-      #   uses: ILikeToWatch/actions-status-discord@v1
-      #   # failure() forces this step to execute even if an earlier step (linting, tests, build) errored out.
-      #   if: ${{ failure() }}
-      #   with:
-      #     webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
-      #     status: failure
-      #     title: "Build Failed! The pipeline encountered an error"
-      #     # Verbose output to pinpoint the offending commit and runner logs quickly
-      #     description: |
-      #       **Repository:** ${{ github.repository }}
-      #       **Branch:** ${{ github.ref_name }}
-      #       **Commit:** ${{ github.sha }}
-      #       **Message:** ${{ github.event.head_commit.message }}
-      #       **Author:** ${{ github.actor }}
-      #       **Workflow:** ${{ github.workflow }}
-      #       **Job:** ${{ github.job }}
 
-      #       [View Commit](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
-      #       [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
       # Step-12: Discord Success Notification. Send notification if deployment completes successfully.
       - name: Discord Success Notification
         # Updated to sarisia/actions-status-discord@v1 (valid action slug)
@@ -97,10 +64,13 @@ jobs:
         if: ${{ success() && github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         with:
           # Changed 'webhook-url' to 'webhook' (expected parameter name for sarisia)
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          webhook:
+            ${{ secrets.DISCORD_WEBHOOK }}
+            # Set the status color band on the left of the Discord card (success = green).
           status: success
+          # Main header text rendered at the top of the Discord embed card.
           title: "Deployment Successful! A new version deployed to production"
-          # Combined text into description parameter
+          # # Multi-line string (denoted by '|') formatted with Markdown to display debug context.
           description: |
             **Commit:** ${{ github.sha }}
             **Message:** ${{ github.event.head_commit.message }}
@@ -108,14 +78,18 @@ jobs:
 
       # Step-13: Discord Failure Notification. Send verbose notification if any step in the job fails.
       - name: Discord Failure Notification
-        # Updated to sarisia/actions-status-discord@v1 (valid action slug)
+        # Specify third-party action to execute for building and sending the Discord message payload.
         uses: sarisia/actions-status-discord@v1
-        # failure() forces this step to execute even if an earlier step (linting, tests, build) errored out.
+        # Conditional Execution Guard: failure() returns true if any preceding step in this job (e.g., ESLint, Jest tests, Playwright) fails.
+        # Thus, failure() guarantees the step runs only when a failure occurs in the pipeline.
+        #
         if: ${{ failure() }}
         with:
-          # Changed 'webhook-url' to 'webhook' (expected parameter name for sarisia)
+          # Reads the Discord webhook URL stored securely in your repository's GitHub Actions Secrets.
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          # Set the status color band on the left of the Discord card (failure = red).
           status: failure
+          # Main header text rendered at the top of the Discord embed card.
           title: "Build Failed! The pipeline encountered an error"
           # Verbose output to pinpoint the offending commit and runner logs quickly
           description: |
