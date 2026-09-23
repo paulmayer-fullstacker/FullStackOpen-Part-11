@@ -60,10 +60,12 @@ jobs:
     if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }} # See Note on Step-11
     runs-on: ubuntu-latest
     steps:
-      # Step-1: Trigger deployment on Render using the deploy hook
+      # Step 1: Clones the repository so the working directory exists
+      - uses: actions/checkout@v6
+      # Step-2: Trigger deployment on Render using the deploy hook via curl command
       - name: Trigger deployment on Render
         # Send HTTP GET request to Render's deploy hook URL using curl. Thus informing Render that the pipeline passed and a new deployment can start.
-        run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl -sS -f ${{ secrets.RENDER_DEPLOY_HOOK }}
 
   # Job-3: Notify Success: Run in parallel with 'tag_release' if 'Deploy' succeeds.
   notify_success:
