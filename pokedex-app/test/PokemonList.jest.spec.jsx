@@ -30,6 +30,6 @@ describe('<PokemonList />', () => {
     expect(screen.getByText('eevee')).toBeVisible()
 
     // // FORCE A FAILURE WHEN TESTING STATUS NOTIFICATION ACTION
-    // expect(true).toBe(false)
+    expect(true).toBe(false)
   })
 })
