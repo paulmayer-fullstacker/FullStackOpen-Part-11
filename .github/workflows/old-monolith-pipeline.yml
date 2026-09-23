@@ -10,16 +10,13 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize] # Runs when a PR is opened or updated with new commits.
-
-# Set default execution directory globally, for run steps across all jobs.
-defaults:
-  run:
-    working-directory: ./pokedex-app
-
 jobs:
-  # Job-1: Build & Test: Responsible for code validation, unit tests, building, and E2E testing.
-  build_and_test:
+  simple_deployment_pipeline:
     runs-on: ubuntu-latest
+    # Set the working directory for all steps in this job:
+    defaults:
+      run:
+        working-directory: ./pokedex-app
     steps:
       # Step-1: Check out the repository code into the runner environment.
       - uses: actions/checkout@v6
@@ -39,46 +36,37 @@ jobs:
       # Step-6: Create the production bundle with Webpack.
       - name: Build
         run: npm run build
-      # Step-7: Print current execution date for debugging/logging.
+      # Step-7: Download Playwright browser binaries (Chromium) and system dependencies required for CI.
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      # Step-8: Execute Playwright E2E tests (automatically starts Webpack server and tests the site).
+      - name: Run Playwright tests
+        run: npm run test:e2e
+      # Step-9: Print current execution date for debugging/logging.
       - name: Run date
         run: |
           date
-      # Step-8: List directory contents to inspect the build state.
+      # Step-10: List directory contents to inspect the build state.
       - name: Run ls -l
         run: ls -l
-      # Step-9: Download Playwright browser binaries (Chromium) and system dependencies required for CI.
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-      # Step-10: Execute Playwright E2E tests (automatically starts Webpack server and tests the site).
-      - name: Run Playwright tests
-        run: npm run test:e2e
-
-  # Job-2: Deploy: Execute if 'build_and_test' succeeds AND the commit is not skipped.
-  deploy:
-    needs: build_and_test
-    # Conditional guard statement: Skip deployment if triggered by PR OR if any commit message in the push event contains '#skip'
-    if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }} # See Note on Step-11
-    runs-on: ubuntu-latest
-    steps:
-      # Step-1: Trigger deployment on Render using the deploy hook
-      - name: Trigger deployment on Render
+      # Step-11: Trigger deployment on Render using the deploy hook
+      - name: Trigger deployment
+        # Conditional guard statement: Skip deployment if triggered by PR OR if any commit message in the push event contains '#skip'
+        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }} # See Note on Step-11
         # Send HTTP GET request to Render's deploy hook URL using curl. Thus informing Render that the pipeline passed and a new deployment can start.
         run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
 
-  # Job-3: Notify Success: Run in parallel with 'tag_release' if 'Deploy' succeeds.
-  notify_success:
-    # Trigger only on if deploy succeeds.
-    needs: deploy
-    runs-on: ubuntu-latest
-    steps:
-      # Step-1: Discord Success Notification. Send notification if deployment completes successfully.
+      # Step-12: Discord Success Notification. Send notification if deployment completes successfully.
       - name: Discord Success Notification
         # Updated to sarisia/actions-status-discord@v1 (valid action slug)
         uses: sarisia/actions-status-discord@v1
+        # Trigger only on direct main pushes (deployment) and when all prior steps succeed.
+        if: ${{ success() && github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         with:
           # Changed 'webhook-url' to 'webhook' (expected parameter name for sarisia)
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}
-          # Set the status color band on the left of the Discord card (success = green).
+          webhook:
+            ${{ secrets.DISCORD_WEBHOOK }}
+            # Set the status color band on the left of the Discord card (success = green).
           status: success
           # Main header text rendered at the top of the Discord embed card.
           title: "Deployment Successful! A new version deployed to production"
@@ -88,10 +76,37 @@ jobs:
             **Message:** ${{ github.event.head_commit.message }}
             **Author:** ${{ github.actor }}
 
-  # Job-3 Tag Release: Run in parallel with 'notify_success' after 'deploy' succeeds.
+      # Step-13: Discord Failure Notification. Send verbose notification if any step in the job fails.
+      - name: Discord Failure Notification
+        # Specify third-party action to execute for building and sending the Discord message payload.
+        uses: sarisia/actions-status-discord@v1
+        # Conditional Execution Guard: failure() returns true if any preceding step in this job (e.g., ESLint, Jest tests, Playwright) fails.
+        # Thus, failure() guarantees the step runs only when a failure occurs in the pipeline.
+        #
+        if: ${{ failure() }}
+        with:
+          # Reads the Discord webhook URL stored securely in your repository's GitHub Actions Secrets.
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          # Set the status color band on the left of the Discord card (failure = red).
+          status: failure
+          # Main header text rendered at the top of the Discord embed card.
+          title: "Build Failed! The pipeline encountered an error"
+          # Verbose output to pinpoint the offending commit and runner logs quickly
+          description: |
+            **Repository:** ${{ github.repository }}
+            **Branch:** ${{ github.ref_name }}
+            **Commit:** ${{ github.sha }}
+            **Message:** ${{ github.event.head_commit.message }}
+            **Author:** ${{ github.actor }}
+            **Workflow:** ${{ github.workflow }}
+            **Job:** ${{ github.job }}
+
+            [View Commit](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+            [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+  # Jobs run independently of eachother (in parallel). However, t_r is dependent on s_d_p, and can't start until s_d_p has completed.
   tag_release:
-    # Trigger only on if deploy succeeds.
-    needs: deploy
+    # Explicitly make this job wait until 's_d_p' finishes successfully. If linting/testing/building/deployment fail, t_r will not run.
+    needs: [simple_deployment_pipeline]
     runs-on: ubuntu-latest
     steps:
       # Step-1: Checkout repository history.
@@ -112,44 +127,13 @@ jobs:
           # DRY_RUN: Test logic on GitHub without creating a tag on the repository. Declare false for production.
           DRY_RUN: false
 
-  # Job-3: Notify Failure: Monitor previous jobs and runs if any preceding step/job fails.
-  notify_failure:
-    # Trigger only afer build-test and deploy complete.
-    needs: [build_and_test, deploy]
-    # failure() evaluates to true if either build_and_test or deploy fails
-    if: ${{ failure() }}
-    runs-on: ubuntu-latest
-    steps:
-      # Step-1: Discord Failure Notification. Send verbose notification if any step in the job fails.
-      - name: Discord Failure Notification
-        # Specify third-party action to execute for building and sending the Discord message payload.
-        uses: sarisia/actions-status-discord@v1
-        with:
-          # Reads the Discord webhook URL stored securely in your repository's GitHub Actions Secrets.
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}
-          # Set the status color band on the left of the Discord card (failure = red).
-          status: failure
-          # Main header text rendered at the top of the Discord embed card.
-          title: "Build Failed! The pipeline encountered an error"
-          # Verbose output to pinpoint the offending commit and runner logs quickly
-          description: |
-            **Repository:** ${{ github.repository }}
-            **Branch:** ${{ github.ref_name }}
-            **Commit:** ${{ github.sha }}
-            **Message:** ${{ github.event.head_commit.message }}
-            **Author:** ${{ github.actor }}
-            **Workflow:** ${{ github.workflow }}
-            **Job:** ${{ github.job }}
-            [View Commit](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
-            [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-#  Note on Job-2: Deploy:
+#  Note on Step-11:
 #  github.event.commits.*.message: Extracts an array of all commit message strings in the push event.
 #  join(..., ' '): Flatten that array into a single space-separated string.
 #  contains(..., '#skip'): Checks if #skip exists anywhere in that combined text.
 #  !: Inversion. So, the step executes only when #skip is not found in any of the merged commits.
 
-#  Job-3: Notify Failure:
+#  Note on Step-11:
 ## #  [View Commit](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
 # Markdown hyperlink format: [Link Text](URL)
 # - [View Commit]: The text that appears as a clickable hyperlink in Discord.
