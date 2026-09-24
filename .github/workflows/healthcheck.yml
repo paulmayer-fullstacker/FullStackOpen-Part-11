@@ -5,9 +5,9 @@ name: Periodic Health Check
 on:
   # Manual Trigger: trigger the check from the GitHub Actions tab without waiting for the scheduled timer.
   workflow_dispatch:
-  schedule:
-    # Scheduled timer: Runs every 15 minutes during testing.
-    - cron: "*/15 * * * *"
+  # schedule:
+  #   # Scheduled timer: Runs every 15 minutes during testing.
+  #   - cron: "*/15 * * * *"
 
 jobs:
   health_check:
