@@ -1,3 +1,5 @@
+# .github/workflows/healthcheck.yml
+
 name: Periodic Health Check
 
 on:
@@ -12,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check the deployed service URL
-        uses: jtalk/url-health-check-action@v6
+        uses: jtalk/url-health-check-action@v4
         with:
           # Send an HTTP GET request (ping) to our deployed server endpoint.
           url: https://fullstackopen-part-11.onrender.com/health
